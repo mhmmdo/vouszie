@@ -14,6 +14,10 @@ const WSF = require("wa-sticker-formatter")
 const webpConverter = require("./lib/webpconverter.js")
 const yargs = require('yargs/yargs')
 
+const groq = new Groq({
+  apiKey: "", // Ganti dengan API Key yang valid
+});
+
 global.yargs = yargs(process.argv).argv
 
 const MEMORY = {}
