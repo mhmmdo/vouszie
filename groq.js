@@ -106,9 +106,10 @@ async function connectToWhatsApp() {
                 return;
             }
 
-            if (!MEMORY[senderNumber]) {
-                MEMORY[senderNumber] = { history: [] };
-            }
+            MEMORY[senderNumber].history.push({
+    			role: "user",
+    			content: textMessage,  // Pesan dari pengguna yang diterima
+			});
 
 			if (imageMessage) {
 				const image = await downloadMediaMessage(message, 'buffer')
@@ -137,8 +138,14 @@ async function connectToWhatsApp() {
 
 			try {
 				await sock.sendPresenceUpdate('composing', message.key.remoteJid)
-				const chatCompletion = await getGroqChatCompletion(MEMORY[senderNumber].history);
-				const response = chatCompletion.choices[0]?.message?.content || "I'm sorry, I couldn't process that request.";
+				const stream = await getGroqChatCompletion(MEMORY[senderNumber].history);
+				let response = '';
+				for await (const chunk of stream) {
+    				const content = chunk.choices[0]?.delta?.content || "";
+    				response += content;
+  				}
+				// const chatCompletion = await getGroqChatCompletion(MEMORY[senderNumber].history);
+				response = response || "I'm sorry, I couldn't process that request.";
 				await sock.sendMessage(senderNumber, { text: response }, { quoted: message });
 			} catch (e) {
 				if (!global.yargs.dev) {
@@ -157,17 +164,17 @@ async function connectToWhatsApp() {
 
 connectToWhatsApp()
 
-const getGroqChatCompletion = async (history) => {
+const getGroqChatStream = async (history) => {
     return groq.chat.completions.create({
         messages: [
-            { role: "system", content: "Kamu AI buatan ridho" },
+            { role: "system", content: "Kamu adalah Zia - AI, AI yang di buat oleh Muhammad Ridho, yang telah di-programkan khusus untuk membantu Muhammad Ridho, seorang mahasiswa Politeknik Negeri Banjarmasin. Kamu memiliki kemampuan untuk membantu dalam materi bisnis, coding, dan teknologi, termasuk program Arduino, coding web, dan AI learning. Kamu dapat berkomunikasi menggunakan bahasa Indonesia yang gaul dan akrab, sehingga Orang dapat menghubungi Kamu dengan mudah dan efektif." },
             ...history,  // Include history from current user session
         ],
-        model: "llama-3.3-70b-versatile",
+        model: "llama3-8b-8192",
         temperature: 0.5,
         max_tokens: 1024,
         top_p: 1,
         stop: null,
-        stream: false,
+        stream: true,
     });
 };
